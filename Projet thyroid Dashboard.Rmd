@@ -1,0 +1,65 @@
+---
+title: "Thyroid dashboard"
+output:
+  flexdashboard::flex_dashboard:
+    orientation: columns
+    theme: readable
+params: 
+  name: "Fox"
+runtime: shiny 
+---
+
+```{r global, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(flexdashboard)
+library(naniar)
+library(janitor)
+library(simputation)
+wd = 'C:/Users/sebas/Documents/Centrale nantes/MATHAPP/R/Class Material-20221110/Projet thyroide'
+setwd(wd)
+thyroid <- read.csv('thyroid.csv')
+```
+
+
+
+# Page 1
+
+## Sidebar {.sidebar}
+
+```{r}
+
+numericInput("id_pat", label = "Client number :", value = 1)
+
+
+
+
+```
+
+## Column
+
+```{r}
+renderTable(thyroid[input$id_pat,])
+
+
+
+```
+
+###  {.value.box}
+
+```{r}
+renderValueBox({
+  icon <- if (thyroid[input$id_pat,'patient_gender'] == 0) "fa-male" else "fa-female"
+
+  valueBox(
+    value = if (thyroid[input$id_pat,'patient_gender'] == 0) "male" else "female",
+    icon = icon,
+    caption = 'patient gender',
+  )
+})
+ 
+```
+
+# Page 2
+
+# Page 3
