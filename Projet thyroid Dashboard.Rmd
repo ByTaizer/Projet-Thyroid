@@ -39,8 +39,8 @@ numericInput("id_pat", label = "Client number :", value = 1)
 ## Column
 
 ```{r}
-renderTable(thyroid[input$id_pat,])
 
+renderTable(thyroid[input$id_pat,])
 
 
 ```
@@ -48,6 +48,7 @@ renderTable(thyroid[input$id_pat,])
 ###  {.value.box}
 
 ```{r}
+
 renderValueBox({
   icon <- if (thyroid[input$id_pat,'patient_gender'] == 0) "fa-male" else "fa-female"
 

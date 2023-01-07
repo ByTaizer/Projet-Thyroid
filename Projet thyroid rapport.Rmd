@@ -28,10 +28,14 @@ head(thyroid)
 
 
 
-
 ```{r}
 thyroid <- clean_names(thyroid) 
 colnames(thyroid)[1] <- 'thyroid_class'
+thyroid[15,'patient_age'] <- 28
+thyroid[15,3:28] <- c(0,thyroid[15,3:27])
+thyroid[15,]
+thyroid[,'fti_reading'] <- as.numeric(thyroid[,'fti_reading'])
+thyroid[,'patient_age'] <- as.numeric(thyroid[,'patient_age'])
 head(thyroid)
 ```
 
@@ -40,12 +44,21 @@ head(thyroid)
 Missing variables
 
 ```{r}
-impute_cart(thyroid, tsh_reading ~ .) 
+thyroid <- impute_rf(thyroid, tsh_reading ~ . ) %>%
+  impute_rf(t3_reading ~ .) %>%
+  impute_rf(t4_reading ~ .) %>%
+  impute_rf(thyrox_util_rate_t4u_reading ~ .) %>%
+  impute_rf(fti_reading ~ .)
 
 ```
 
 ```{r}
-ggplot(data = thyroid) + geom_point(mapping = aes(x = tsh_reading, y = thyroid_class))  
+skimr::skim(thyroid)
+```
+
+```{r}
+p <- ggplot(data = thyroid) + geom_point(mapping = aes(x = tsh_reading, y = thyroid_class, color = ref_src))  
+plotly::ggplotly()
 ```
 
 ```{r}
@@ -64,11 +77,8 @@ plotly::ggplotly(p)
 
 ```{r}
 p <- ggplot(data = thyroid, mapping = aes(x = t3_reading , y = tsh_reading, color = thyroid_class)) + geom_point() 
-p + facet_grid(. ~ query_hypothyroid)
-```
-
-```{r}
-ggplot(data = thyroid) + geom_point(mapping = aes(x = t3_reading, y = thyroid_class))  
+p <- p + facet_grid(. ~ ref_src)
+plotly::ggplotly(p)
 ```
 
 ```{r}
@@ -90,3 +100,27 @@ ggplot(data = thyroid) + geom_point(mapping = aes(x = tsh_reading, y = goitre))
 p <- ggplot(data = thyroid, mapping = aes(x = tumor, fill = thyroid_class)) + geom_bar()
 plotly::ggplotly(p)
 ```
+
+
+
+
+
+
+
+
+```{r}
+
+thyroid %>%
+  select(., thyroid_class, patient_age) %>%
+  filter(thyroid_class == 'sick') %>%
+  group_by(thyroid_class, patient_age) %>%
+  ggplot() + geom_density(aes(x = patient_age))
+```
+
+```{r}
+p <- ggplot(data = filter(thyroid, 60 < patient_age & patient_age < 80), mapping = aes(x = t3_reading, y = tsh_reading, color = thyroid_class)) + geom_point() 
+
+plotly::ggplotly(p)
+```
+
+
