@@ -1,65 +1,138 @@
 ---
-title: "Thyroid dashboard"
-output:
+title: "Dashboard"
+author: "Floran"
+output: 
   flexdashboard::flex_dashboard:
-    orientation: columns
-    theme: readable
-params: 
-  name: "Fox"
-runtime: shiny 
+    orientation: rows
+    social: menu
+    source_code: embed
+    vertical_layout: scroll
+    smooth_scroll: true
+runtime: shiny
 ---
 
-```{r global, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-library(tidyverse)
+<style>
+.chart-shim {
+    overflow-y: scroll;
+}
+</style>
+
+```{r setup, include=FALSE}
+library(ggplot2)
+library(plotly)
+library(plyr)
 library(flexdashboard)
-library(naniar)
-library(janitor)
-library(simputation)
-wd = 'C:/Users/sebas/Documents/Centrale nantes/MATHAPP/R/Class Material-20221110/Projet thyroide'
-setwd(wd)
-thyroid <- read.csv('thyroid.csv')
+library(readr)
+library(shiny)
+
+data <- read.csv("thyroid.csv", header=TRUE, colClasses = 
+                   c("ThryroidClass" = "character",
+                     "patient_gender" = "character",
+                     "presc_thyroxine" = "character",
+                     "queried_why_on_thyroxine" = "character",
+                     "presc_anthyroid_meds" = "character",
+                     "sick" = "character",
+                     "pregnant" = "character",
+                     "thyroid_surgery" = "character",
+                     "radioactive_iodine_therapyI131" = "character",
+                     "query_hypothyroid" = "character",
+                     "query_hyperthyroid" = "character",
+                     "lithium" = "character",
+                     "goitre" = "character",
+                     "tumor" = "character",
+                     "hypopituitarism" = "character",
+                     "psych_condition" = "character",
+                     "TSH_measured" = "character",
+                     "T3_measured" = "character",
+                     "T4_measured" = "character",
+                     "thyrox_util_rate_T4U_measured" = "character",
+                     "FTI_measured" = "character",
+                     "ref_src" = "character")
+                 )
+```
+
+```{r, include=FALSE}
+skimr::skim(data)
 ```
 
 
+Infos
+=======================================================================
+Row {.tabset}
+-----------------------------------------------------------------------
 
-# Page 1
-
-## Sidebar {.sidebar}
+### Informations data
 
 ```{r}
-
-numericInput("id_pat", label = "Client number :", value = 1)
-
-
-
+skimr::skim(data)
 
 ```
 
-## Column
+
+### Informations patients
+
 
 ```{r}
-renderTable(thyroid[input$id_pat,])
+selectInput("variable", 
+        label = "variable", 
+        choices = c("thyrox_util_rate_T4U_reading"=thyrox_util_rate_T4U_reading, "FTI_reading"=FTI_reading))
 
-
-
+y <- reactive(input$variable)
 ```
 
-###  {.value.box}
 
 ```{r}
-renderValueBox({
-  icon <- if (thyroid[input$id_pat,'patient_gender'] == 0) "fa-male" else "fa-female"
-
-  valueBox(
-    value = if (thyroid[input$id_pat,'patient_gender'] == 0) "male" else "female",
-    icon = icon,
-    caption = 'patient gender',
-  )
-})
- 
+renderPlot(
+  ggplot(data) + geom_point(aes(x=patient_age, y=cat(y())))
+)
 ```
 
-# Page 2
+### Autre
 
-# Page 3
+```{r}
+renderPrint(
+  y()
+)
+
+```
+
+
+
+
+
+
+
+Onglet 2
+=======================================================================
+Row
+-----------------------------------------------------------------------
+
+
+
+Onglet 3
+=======================================================================
+Row
+-----------------------------------------------------------------------
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
