@@ -1,2 +1,4 @@
 thyroid.csv
 *.html
+.RData
+.Rhistory

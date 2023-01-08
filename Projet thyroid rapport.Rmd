@@ -10,45 +10,22 @@ library(tidyverse)
 library(flexdashboard)
 library(naniar)
 library(janitor)
+library(patchwork)
+library(glue)
 library(simputation)
 wd = "C:/Users/sebas/Desktop/Projet Thyroid"
 setwd(wd)
 thyroid <- read.csv('thyroid.csv')
 ```
 
-
-
-```{r}
-skimr::skim(thyroid)
-```
-
-```{r}
-head(thyroid)
-```
-
-
-
 ```{r}
 thyroid <- clean_names(thyroid) 
 colnames(thyroid)[1] <- 'thyroid_class'
 thyroid[15,'patient_age'] <- 28
-thyroid[15,3:28] <- c(0,thyroid[15,3:27])
-thyroid[15,]
-thyroid[,'fti_reading'] <- as.numeric(thyroid[,'fti_reading'])
-thyroid[,'patient_age'] <- as.numeric(thyroid[,'patient_age'])
-head(thyroid)
-```
-
-
-
-Missing variables
-
-```{r}
-thyroid <- impute_rf(thyroid, tsh_reading ~ . ) %>%
-  impute_rf(t3_reading ~ .) %>%
-  impute_rf(t4_reading ~ .) %>%
-  impute_rf(thyrox_util_rate_t4u_reading ~ .) %>%
-  impute_rf(fti_reading ~ .)
+thyroid[15,3:28] <- c(0,thyroid[15,3:27]) #erreur repérée (une ; à la place d'une , qui décale toute la ligne)
+thyroid <- thyroid %>% mutate(fti_reading = as.double(fti_reading)) %>%
+  mutate(patient_age = as.double(patient_age)) %>%
+  mutate(patient_gender = ifelse(patient_gender == 0, 'male', 'female'))
 
 ```
 
@@ -56,24 +33,61 @@ thyroid <- impute_rf(thyroid, tsh_reading ~ . ) %>%
 skimr::skim(thyroid)
 ```
 
+
+Missing variables
+
+
 ```{r}
-p <- ggplot(data = thyroid) + geom_point(mapping = aes(x = tsh_reading, y = thyroid_class, color = ref_src))  
-plotly::ggplotly()
+thyroid %>% gg_miss_upset() #Plot to see the simultaneity between variables
+```
+
+Il y'a beaucoup de fois ou lorsqu'une grandeur n'est pas mesurée chez le patients, les autres non plus.
+
+
+```{r}
+thyroid <- impute_rf(thyroid, tsh_reading ~ .) %>%
+  impute_rf(t3_reading ~ .) %>%
+  impute_rf(t4_reading ~ .) %>%
+  impute_rf(thyrox_util_rate_t4u_reading ~ .) %>%
+  impute_rf(fti_reading ~ .)
 ```
 
 ```{r}
-ggplot(data = thyroid) + geom_point(mapping = aes(x = t4_reading, y = thyroid_class))  
+thyroid %>% gg_miss_upset() #Plot to see the simultaneity between variables
+
+```
+
+
+```{r}
+thyroid <- impute_rf(thyroid, fti_reading ~ . - thyrox_util_rate_t4u_reading) %>%
+  impute_rf(thyrox_util_rate_t4u_reading ~ . - fti_reading) %>%
+  impute_rf(tsh_reading ~ . - t3_reading) %>%
+  impute_rf(t3_reading ~ . - tsh_reading)
+
+```
+
+
+
+```{r}
+thyroid %>% gg_miss_upset() #Plot to see the simultaneity between variables
 ```
 
 ```{r}
-ggplot(data = thyroid) + geom_point(mapping = aes(x = thyrox_util_rate_t4u_reading, y = thyroid_class))  
+thyroid <- impute_rf(thyroid, tsh_reading + t4_reading + t3_reading + thyrox_util_rate_t4u_reading + fti_reading ~ thyroid_class)
 ```
 
 ```{r}
-p <- ggplot(data = thyroid, mapping = aes(x = t3_reading, y = tsh_reading, color = thyroid_class)) + geom_point() 
-
-plotly::ggplotly(p)
+skimr::skim(thyroid)
 ```
+
+
+Plots to try to find correlation between variables:
+
+```{r}
+ggplot(data = thyroid, mapping = aes(x = ref_src, fill = thyroid_class)) + geom_bar()
+```
+
+
 
 ```{r}
 p <- ggplot(data = thyroid, mapping = aes(x = t3_reading , y = tsh_reading, color = thyroid_class)) + geom_point() 
@@ -85,31 +99,28 @@ plotly::ggplotly(p)
 ggplot(data = thyroid, mapping = aes(x = radioactive_iodine_therapy_i131, fill = thyroid_class)) + geom_bar()
 ```
 
+Cette variable ne semble pas être pertinante pour la prédiction
+
 ```{r}
 p <- ggplot(data = thyroid, mapping = aes(x = goitre, fill = thyroid_class)) + geom_bar()
 plotly::ggplotly(p)
-
 ```
+Cette variable ne semble pas être pertinante pour la prédiction
 
-```{r}
-ggplot(data = thyroid) + geom_point(mapping = aes(x = tsh_reading, y = goitre))  
-
-```
 
 ```{r}
 p <- ggplot(data = thyroid, mapping = aes(x = tumor, fill = thyroid_class)) + geom_bar()
 plotly::ggplotly(p)
 ```
-
-
-
-
-
-
+Cette variable ne semble pas être pertinante pour la prédiction
 
 
 ```{r}
+ggplot(data = thyroid) + geom_point(mapping = aes(x = tsh_reading, y = goitre))  
+```
+Le goitre est lié a un taux de tsh très faible
 
+```{r}
 thyroid %>%
   select(., thyroid_class, patient_age) %>%
   filter(thyroid_class == 'sick') %>%
@@ -117,10 +128,66 @@ thyroid %>%
   ggplot() + geom_density(aes(x = patient_age))
 ```
 
-```{r}
-p <- ggplot(data = filter(thyroid, 60 < patient_age & patient_age < 80), mapping = aes(x = t3_reading, y = tsh_reading, color = thyroid_class)) + geom_point() 
+Les personnes les plus malades sont les personnes agées entre 50 et 80 ans.
 
+```{r}
+p <- ggplot(data = thyroid, mapping = aes(x = patient_gender, fill = thyroid_class)) + geom_bar()
 plotly::ggplotly(p)
 ```
+
+L'échantillon contient plus de femmes que d'hommes. On n'observe pas ici de tendance entre hommes/femmes.
+
+
+```{r}
+p1 <- ggplot(data = thyroid, mapping = aes(x = tsh_reading, y = thyroid_class)) + geom_point() 
+p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, y = thyroid_class)) + geom_point()  
+p3 <- ggplot(data = thyroid, mapping = aes(x = thyrox_util_rate_t4u_reading, y = thyroid_class)) + geom_point()
+p4 <- ggplot(data = thyroid, mapping = aes(x = t3_reading, y = thyroid_class)) + geom_point()
+p5 <- ggplot(data = thyroid, mapping = aes(x = fti_reading, y = thyroid_class)) + geom_point()
+p1 + p2 + p3 + p4 + p5
+```
+
+```{r}
+p1 <- ggplot(data = thyroid, mapping = aes(x = tsh_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+                                                                          
+p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative'))   
+p3 <- ggplot(data = thyroid, mapping = aes(x = thyrox_util_rate_t4u_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+p4 <- ggplot(data = thyroid, mapping = aes(x = t3_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+p5 <- ggplot(data = thyroid, mapping = aes(x = fti_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+p1 + p2 + p3 + p4 + p5
+```
+
+
+```{r}
+pairs(thyroid[,c(19,21,23,25,27)], col=ifelse(thyroid$thyroid_class == 'sick', "red", "black"), lower.panel = NULL)
+```
+
+```{r}
+plotly::plot_ly(thyroid, x = ~t3_reading, y = ~tsh_reading, z = ~thyrox_util_rate_t4u_reading, color = ~thyroid_class)
+
+```
+
+
+```{r}
+p <- ggplot(data = thyroid, mapping = aes(x = t3_reading, y = tsh_reading, color = thyroid_class)) + geom_point() 
+plotly::ggplotly(p)
+```
+```{r}
+perc <- thyroid %>% select(tsh_reading, t3_reading, thyroid_class) %>%
+  filter((tsh_reading < 23 & t3_reading < 1.3) & thyroid_class == 'sick') %>% 
+  summarise(percentage = length(tsh_reading)/length(filter(thyroid, thyroid_class == 'sick')$thyroid_class))
+  
+thyroid %>% select(tsh_reading, t3_reading, thyroid_class) %>%
+  filter(tsh_reading < 23 & t3_reading < 1.3) %>% 
+  ggplot(aes(x = t3_reading, y = tsh_reading, color = thyroid_class)) + geom_point() + 
+  labs(caption = glue('Le pourcetage des patients malades contenues dans ce graphe est de {as.character(round(100*perc))}%'))
+```
+Grâce à ces deux taux, on a déjà une bonne idée de l'état du patient
+
+
+
+
+
+
 
 
