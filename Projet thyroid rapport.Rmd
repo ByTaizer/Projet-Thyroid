@@ -15,75 +15,69 @@ library(glue)
 library(simputation)
 wd = "C:/Users/sebas/Desktop/Projet Thyroid"
 setwd(wd)
-thyroid <- read.csv('thyroid.csv')
-```
-
-On commence par un nettoyage des données et par des modifications pratiques pour la manipulation.
-
-```{r}
-# Transformation des noms des colonnes en format plus conventionnel (minuscules, _)
-thyroid <- clean_names(thyroid) 
-# Correction d'une faute de frappe (thryroid)
-colnames(thyroid)[1] <- 'thyroid_class'
-# Correction d'une erreur ligne 15 ou un ; s'est glissé dans le dataset et a tout décalée.
-thyroid[15,'patient_age'] <- 28
-thyroid[15,3:28] <- c(0,thyroid[15,3:27]) 
-
-# Changement du type de certaines colonnes pour facilité la manipulation plus tard.
-thyroid <- thyroid %>% mutate(fti_reading = as.double(fti_reading)) %>%
-  mutate(patient_age = as.double(patient_age)) %>%
-  mutate(patient_gender = ifelse(patient_gender == 0, 'male', 'female'))
-
+thyroid <- read.csv('thyroid_impute.csv')
+thyroid_uncomplete <- read.csv('thyroid.csv')
 ```
 
 Tout d'abord, il faut explorer le jeu de données dans sa globalité. Pour cela,
 Nous utilisons fonction skim qui nous en donnes un résumé.
 
 ```{r}
-skimr::skim(thyroid)
+skimr::skim(thyroid_uncomplete)
+```
+
+On commence par un nettoyage des données et par des modifications pratiques pour la manipulation.
+
+```{r eval = FALSE}
+# Transformation des noms des colonnes en format plus conventionnel (minuscules, _)
+thyroid_uncomplete <- clean_names(thyroid_uncomplete) 
+# Correction d'une faute de frappe (thryroid)
+colnames(thyroid_uncomplete)[1] <- 'thyroid_class'
+# Correction d'une erreur ligne 15 ou un ; s'est glissé dans le dataset et a tout décalée.
+thyroid_uncomplete[15,'patient_age'] <- 28
+thyroid_uncomplete[15,3:28] <- c(0,thyroid_uncomplete[15,3:27]) 
+
+# Changement du type de certaines colonnes pour facilité la manipulation plus tard.
+thyroid_uncomplete <- thyroid_uncomplete %>% mutate(fti_reading = as.double(fti_reading)) %>%
+  mutate(patient_age = as.double(patient_age)) %>%
+  mutate(patient_gender = ifelse(patient_gender == 0, 'male', 'female'))
+
 ```
 
 Missing variables
 
 
 ```{r}
-thyroid %>% gg_miss_upset() #Plot to see the simultaneity between variables
+thyroid_uncomplete %>% gg_miss_upset() #Plot to see the simultaneity between variables
 ```
 
 Il y'a beaucoup de fois ou lorsqu'une grandeur n'est pas mesurée chez le patients, les autres non plus.
 
 
-```{r}
-thyroid <- impute_rf(thyroid, tsh_reading ~ .) %>%
+```{r eval = FALSE}
+thyroid_uncomplete <- impute_rf(thyroid_uncomplete, tsh_reading ~ .) %>%
   impute_rf(t3_reading ~ .) %>%
   impute_rf(t4_reading ~ .) %>%
   impute_rf(thyrox_util_rate_t4u_reading ~ .) %>%
   impute_rf(fti_reading ~ .)
 ```
 
-```{r}
-thyroid %>% gg_miss_upset() #Plot to see the simultaneity between variables
-
-```
-
-
-```{r}
-thyroid <- impute_rf(thyroid, fti_reading ~ . - thyrox_util_rate_t4u_reading) %>%
+```{r eval = FALSE}
+thyroid_uncomplete <- impute_rf(thyroid_uncomplete, fti_reading ~ . - thyrox_util_rate_t4u_reading) %>%
   impute_rf(thyrox_util_rate_t4u_reading ~ . - fti_reading) %>%
   impute_rf(tsh_reading ~ . - t3_reading) %>%
   impute_rf(t3_reading ~ . - tsh_reading)
 
 ```
 
-
-
-```{r}
-thyroid %>% gg_miss_upset() #Plot to see the simultaneity between variables
+```{r eval = FALSE}
+thyroid_uncomplete <- impute_rf(thyroid_uncomplete, tsh_reading + t4_reading + t3_reading + thyrox_util_rate_t4u_reading + fti_reading ~ thyroid_class)
 ```
 
-```{r}
-thyroid <- impute_rf(thyroid, tsh_reading + t4_reading + t3_reading + thyrox_util_rate_t4u_reading + fti_reading ~ thyroid_class)
+```{r eval = FALSE}
+write.csv(thyroid_uncomplete, 'thyroid_impute.csv')
 ```
+
 
 ```{r}
 skimr::skim(thyroid)
@@ -159,13 +153,13 @@ p1 + p2 + p3 + p4 + p5
 ```{r}
 p1 <- ggplot(data = thyroid, mapping = aes(x = tsh_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(-1,5)
                                                                           
-p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative'))  
+p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(25,200)
 
-p3 <- ggplot(data = thyroid, mapping = aes(x = thyrox_util_rate_t4u_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+p3 <- ggplot(data = thyroid, mapping = aes(x = thyrox_util_rate_t4u_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(0.5,1.5)
 
-p4 <- ggplot(data = thyroid, mapping = aes(x = t3_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+p4 <- ggplot(data = thyroid, mapping = aes(x = t3_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) +xlim(0,5)
 
-p5 <- ggplot(data = thyroid, mapping = aes(x = fti_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+p5 <- ggplot(data = thyroid, mapping = aes(x = fti_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(25,200)
 
 p1 + p2 + p3 + p4 + p5
 ```
@@ -184,6 +178,7 @@ plotly::plot_ly(thyroid, x = ~t3_reading, y = ~tsh_reading, z = ~thyrox_util_rat
 
 ```{r}
 p <- ggplot(data = thyroid, mapping = aes(x = t3_reading, y = tsh_reading, color = thyroid_class)) + geom_point() 
+p <- p + facet_grid()
 plotly::ggplotly(p)
 ```
 ```{r}
