@@ -18,21 +18,30 @@ setwd(wd)
 thyroid <- read.csv('thyroid.csv')
 ```
 
+On commence par un nettoyage des données et par des modifications pratiques pour la manipulation.
+
 ```{r}
+# Transformation des noms des colonnes en format plus conventionnel (minuscules, _)
 thyroid <- clean_names(thyroid) 
+# Correction d'une faute de frappe (thryroid)
 colnames(thyroid)[1] <- 'thyroid_class'
+# Correction d'une erreur ligne 15 ou un ; s'est glissé dans le dataset et a tout décalée.
 thyroid[15,'patient_age'] <- 28
-thyroid[15,3:28] <- c(0,thyroid[15,3:27]) #erreur repérée (une ; à la place d'une , qui décale toute la ligne)
+thyroid[15,3:28] <- c(0,thyroid[15,3:27]) 
+
+# Changement du type de certaines colonnes pour facilité la manipulation plus tard.
 thyroid <- thyroid %>% mutate(fti_reading = as.double(fti_reading)) %>%
   mutate(patient_age = as.double(patient_age)) %>%
   mutate(patient_gender = ifelse(patient_gender == 0, 'male', 'female'))
 
 ```
 
+Tout d'abord, il faut explorer le jeu de données dans sa globalité. Pour cela,
+Nous utilisons fonction skim qui nous en donnes un résumé.
+
 ```{r}
 skimr::skim(thyroid)
 ```
-
 
 Missing variables
 
@@ -148,12 +157,16 @@ p1 + p2 + p3 + p4 + p5
 ```
 
 ```{r}
-p1 <- ggplot(data = thyroid, mapping = aes(x = tsh_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+p1 <- ggplot(data = thyroid, mapping = aes(x = tsh_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(-1,5)
                                                                           
-p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative'))   
+p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative'))  
+
 p3 <- ggplot(data = thyroid, mapping = aes(x = thyrox_util_rate_t4u_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+
 p4 <- ggplot(data = thyroid, mapping = aes(x = t3_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+
 p5 <- ggplot(data = thyroid, mapping = aes(x = fti_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) 
+
 p1 + p2 + p3 + p4 + p5
 ```
 
@@ -166,6 +179,7 @@ pairs(thyroid[,c(19,21,23,25,27)], col=ifelse(thyroid$thyroid_class == 'sick', "
 plotly::plot_ly(thyroid, x = ~t3_reading, y = ~tsh_reading, z = ~thyrox_util_rate_t4u_reading, color = ~thyroid_class)
 
 ```
+
 
 
 ```{r}

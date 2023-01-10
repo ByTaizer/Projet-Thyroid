@@ -16,7 +16,7 @@ library(flexdashboard)
 library(naniar)
 library(janitor)
 library(simputation)
-wd = 'C:/Users/sebas/Documents/Centrale nantes/MATHAPP/R/Class Material-20221110/Projet thyroide'
+wd = 'C:/Users/sebas/Desktop/Projet Thyroid'
 setwd(wd)
 thyroid <- read.csv('thyroid.csv')
 ```
