@@ -1,6 +1,6 @@
 ---
 title: "Dashboard"
-author: "Floran"
+author: ""
 output: 
   flexdashboard::flex_dashboard:
     orientation: rows
@@ -19,7 +19,7 @@ library(plyr)
 library(flexdashboard)
 library(readr)
 library(shiny)
-library(hash)
+library(stringr)
 
 thyroid <- read.csv("thyroid.csv", header=TRUE, colClasses = 
                    c("ThryroidClass" = "character",
@@ -95,33 +95,33 @@ Column {.sidebar}
 -----------------------------------------------------------------------
 
 ```{r}
-selectInput('xcol', 'X Variable', names(thyroid))
+selectInput('xcol', 'X Variable', names(thyroid), selected=names(thyroid)[[2]])
     
-selectInput('ycol', 'Y Variable', names(thyroid),
-                selected=names(thyroid)[[2]])
+selectInput('ycol', 'Y Variable', names(thyroid), selected=names(thyroid)[[21]])
 
-selectInput('grp', 'Group', c('None', names(thyroid)))
+selectInput('grp', 'Group', c('None', names(thyroid)), selected=names(thyroid)[[1]])
 
 ```
 
 Column
 -----------------------------------------------------------------------
 
-### General plot
+
 
 ```{r}
 
 
-renderPlot({
-  p <- ggplot(thyroid, mapping = aes(x=UQ(as.name(input$xcol)), y=UQ(as.name(input$ycol)))) + geom_point() + labs(x=input$xcol,y=input$ycol)
+plotly::renderPlotly({
+  p <- ggplot(thyroid, mapping = aes(x=UQ(as.name(input$xcol)), y=UQ(as.name(input$ycol)))) + 
+    geom_point() + 
+    labs(x = str_to_title(str_replace(input$xcol, "_", " ")) ,y = str_to_title(str_replace(input$ycol, "_", " ")))
   
   if (input$grp != 'None')
     p <- p + aes_string(color=input$grp)
   
-  print(p)
+  print(plotly::ggplotly(p))
   
 })
-
 
 ```
 
