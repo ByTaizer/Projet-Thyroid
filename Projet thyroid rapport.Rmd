@@ -1,5 +1,5 @@
 ---
-title: "HTML Report project"
+title: "HTML Report Project Thyroid"
 output: html_document
 date: "2023-01-07"
 ---
@@ -19,40 +19,58 @@ thyroid <- read.csv('thyroid_impute.csv')
 thyroid_uncomplete <- read.csv('thyroid.csv')
 ```
 
-Tout d'abord, il faut explorer le jeu de données dans sa globalité. Pour cela,
-Nous utilisons fonction skim qui nous en donnes un résumé.
+Floran Defossez 
+Gatien Chopard                        
+Sébastien Roig
+
+# Dataset exploration
+
+We start by exploring the dataset as a whole. To do this, we use the skim function which gives us a quick summary :
 
 ```{r}
 skimr::skim(thyroid_uncomplete)
 ```
 
-On commence par un nettoyage des données et par des modifications pratiques pour la manipulation.
+We can observe some inconvenient variable names with capital letters and spaces. The *janitor* library allows us to obtain more convenient names. 
+We can see that there is also missing values for 5 variables (tsh_reading, t3_reading etc...). It will therefore be necessary to complete the data. 
+If we look closely, thanks to the histogram, we can also see anomalies in the different "measures" columns. 
+
+We start by cleaning up the data and making practical changes for handling.
 
 ```{r eval = FALSE}
-# Transformation des noms des colonnes en format plus conventionnel (minuscules, _)
+# Column names changes for more conveniency
 thyroid_uncomplete <- clean_names(thyroid_uncomplete) 
-# Correction d'une faute de frappe (thryroid)
+# An error correction in the name thryroid
 colnames(thyroid_uncomplete)[1] <- 'thyroid_class'
-# Correction d'une erreur ligne 15 ou un ; s'est glissé dans le dataset et a tout décalée.
+# Fixed an error on line 15 where a ; slipped into the dataset and shifted everything.
 thyroid_uncomplete[15,'patient_age'] <- 28
 thyroid_uncomplete[15,3:28] <- c(0,thyroid_uncomplete[15,3:27]) 
 
-# Changement du type de certaines colonnes pour facilité la manipulation plus tard.
+# Changing the type of some columns for easier handling later.
 thyroid_uncomplete <- thyroid_uncomplete %>% mutate(fti_reading = as.double(fti_reading)) %>%
   mutate(patient_age = as.double(patient_age)) %>%
   mutate(patient_gender = ifelse(patient_gender == 0, 'male', 'female'))
 
 ```
 
-Missing variables
-
-
 ```{r}
-thyroid_uncomplete %>% gg_miss_upset() #Plot to see the simultaneity between variables
+skimr::skim(thyroid_uncomplete)
 ```
 
-Il y'a beaucoup de fois ou lorsqu'une grandeur n'est pas mesurée chez le patients, les autres non plus.
 
+# Missing data
+
+First, we want to see how much data is missing + if there is data missing simultaneously for different features.
+The library *naniar* will allow us to have a quick recap of these informations on a plot.
+(We could think of using *naniar* in order to create columns to see where are the missing values but we already have the columns called "..._measured" which allow us to see it.)
+
+```{r}
+thyroid_uncomplete %>% gg_miss_upset() 
+```
+
+We can see that there are many times where the values are missing in the different columns simultaneously.
+This can be a problem because *simputation* can have difficulties to handle missing values for the training if the training data is missing.
+Consequently, we will start by completing the rows where only one column is missing. Here we use a random forest taking into account all the information to complete.
 
 ```{r eval = FALSE}
 thyroid_uncomplete <- impute_rf(thyroid_uncomplete, tsh_reading ~ .) %>%
@@ -62,6 +80,8 @@ thyroid_uncomplete <- impute_rf(thyroid_uncomplete, tsh_reading ~ .) %>%
   impute_rf(fti_reading ~ .)
 ```
 
+Then, we use the gg_miss_upset plot to see where we can complete rows where only two columns are missing.
+
 ```{r eval = FALSE}
 thyroid_uncomplete <- impute_rf(thyroid_uncomplete, fti_reading ~ . - thyrox_util_rate_t4u_reading) %>%
   impute_rf(thyrox_util_rate_t4u_reading ~ . - fti_reading) %>%
@@ -70,33 +90,34 @@ thyroid_uncomplete <- impute_rf(thyroid_uncomplete, fti_reading ~ . - thyrox_uti
 
 ```
 
+Finally, it only remains the cases where more than two columns are missing. We will do a simple model to complete the remaining data (as there is very few data remaining), we could use the mean for example :
+
 ```{r eval = FALSE}
-thyroid_uncomplete <- impute_rf(thyroid_uncomplete, tsh_reading + t4_reading + t3_reading + thyrox_util_rate_t4u_reading + fti_reading ~ thyroid_class)
+thyroid_uncomplete <- impute_mean(thyroid_uncomplete, tsh_reading + t4_reading + t3_reading + thyrox_util_rate_t4u_reading + fti_reading)
 ```
+
+We write the content of the completed dataset into a csv in order to compile only one time this completion algorithm.
 
 ```{r eval = FALSE}
 write.csv(thyroid_uncomplete, 'thyroid_impute.csv')
 ```
 
-
 ```{r}
 head(thyroid)
 ```
 
+# Data visualisation
 
-Plots to try to find correlation between variables:
+In this section we will try to find correlation between variables in order to find variables that will allow us to make a diagnostic. To do this we tried many plots.
 
-```{r}
-ggplot(data = thyroid, mapping = aes(x = ref_src, fill = thyroid_class)) + geom_bar()
-```
-
-
+We start by trying to see the meaning of ref_src, and its impact on the thyroid_class result.
 
 ```{r}
-p <- ggplot(data = thyroid, mapping = aes(x = t3_reading , y = tsh_reading, color = thyroid_class)) + geom_point() 
-p <- p + facet_grid(. ~ ref_src)
-plotly::ggplotly(p)
+ggplot(data = thyroid, mapping = aes(x = ref_src, fill = thyroid_class)) + geom_bar() + labs(title = 'Repartition of patients from different sources')
 ```
+
+We can see here that some referral sources are more represented such as SVI. Other is general and it could be people from anywhere that is why they are more. People from the referral source SVI are more sick, but we don't have the information if this source tends to test more people they suspect.
+
 
 ```{r}
 ggplot(data = thyroid, mapping = aes(x = radioactive_iodine_therapy_i131, fill = thyroid_class)) + geom_bar()
@@ -104,43 +125,50 @@ ggplot(data = thyroid, mapping = aes(x = radioactive_iodine_therapy_i131, fill =
 
 Cette variable ne semble pas être pertinante pour la prédiction
 
+
 ```{r}
 p <- ggplot(data = thyroid, mapping = aes(x = goitre, fill = thyroid_class)) + geom_bar()
 plotly::ggplotly(p)
 ```
-Cette variable ne semble pas être pertinante pour la prédiction
 
+Cette variable ne semble pas être pertinante pour la prédiction
 
 ```{r}
 p <- ggplot(data = thyroid, mapping = aes(x = tumor, fill = thyroid_class)) + geom_bar()
 plotly::ggplotly(p)
 ```
-Cette variable ne semble pas être pertinante pour la prédiction
 
+Cette variable ne semble pas être pertinante pour la prédiction
 
 ```{r}
 ggplot(data = thyroid) + geom_point(mapping = aes(x = tsh_reading, y = goitre))  
 ```
-Le goitre est lié a un taux de tsh très faible
+
+The goitre is linked with a very low tsh rate.
 
 ```{r}
 thyroid %>%
   select(., thyroid_class, patient_age) %>%
   filter(thyroid_class == 'sick') %>%
   group_by(thyroid_class, patient_age) %>%
-  ggplot() + geom_density(aes(x = patient_age))
+  ggplot() + geom_density(aes(x = patient_age)) + labs(title = 'Age distribution of sick patients')
 ```
 
-Les personnes les plus malades sont les personnes agées entre 50 et 80 ans.
+patients between the ages of 50 and 80 tend to be more affected by this disease.
 
 ```{r}
-p <- ggplot(data = thyroid, mapping = aes(x = patient_gender, fill = thyroid_class)) + geom_bar()
+p <- ggplot(data = thyroid, mapping = aes(x = patient_gender, fill = thyroid_class)) + geom_bar() + labs(title = 'Repartion of men and women in the patients')
 plotly::ggplotly(p)
 ```
+```{r}
+p <- ggplot(data = thyroid, mapping = aes(x = patient_gender, fill = thyroid_class)) + geom_bar() + 
+  facet_grid(~ ref_src) + labs(title = 'Repartion of men and women in the patients depending on their source')
+plotly::ggplotly(p)
+```
+We can see that women tend to be more tested than men, though we can't see in this sample a difference between men an women in the rate of positive patient.
 
-L'échantillon contient plus de femmes que d'hommes. On n'observe pas ici de tendance entre hommes/femmes.
 
-
+Now we try to see correlation between the continuous variables and the thyroid_class of the patient. We will try to plot every of them in order to find the best ones to predict the thyroid_class.
 ```{r}
 p1 <- ggplot(data = thyroid, mapping = aes(x = tsh_reading, y = thyroid_class)) + geom_point() 
 p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, y = thyroid_class)) + geom_point()  
@@ -150,36 +178,41 @@ p5 <- ggplot(data = thyroid, mapping = aes(x = fti_reading, y = thyroid_class)) 
 p1 + p2 + p3 + p4 + p5
 ```
 
+We can't see a lot in these graphs. However, it looks like the distributions seem different for the sick patients.
+We can try to verify this : 
+
 ```{r warning = FALSE}
 p1 <- ggplot(data = thyroid, mapping = aes(x = tsh_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(-1,5)
                                                                           
-p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(25,200)
+p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(25,200) 
 
 p3 <- ggplot(data = thyroid, mapping = aes(x = thyrox_util_rate_t4u_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(0.5,1.5)
 
 p4 <- ggplot(data = thyroid, mapping = aes(x = t3_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) +xlim(0,5)
 
-p5 <- ggplot(data = thyroid, mapping = aes(x = fti_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(25,200)
+p5 <- ggplot(data = thyroid, mapping = aes(x = fti_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(25,200) 
 
-p1 + p2 + p3 + p4 + p5
+p1 + p2 + p3 + p4 + p5 
 ```
-
+We can see a difference in the distributions of t3_reading and thyrox_util_rate_t4u_reading. We can try a matrix plot in order to see if we can find a plot that separates well the sick patients from the negative patients :
 
 ```{r}
-pairs(thyroid[,c(19,21,23,25,27)], col=ifelse(thyroid$thyroid_class == 'sick', "red", "black"), lower.panel = NULL)
+pairs(thyroid[,c(19,21,23,25,27)], col=ifelse(thyroid$thyroid_class == 'sick', "red", "black"), lower.panel = NULL, )
 ```
+
+
 
 ```{r warning = FALSE}
-plotly::plot_ly(thyroid, x = ~t3_reading, y = ~tsh_reading, z = ~thyrox_util_rate_t4u_reading, color = ~thyroid_class)
+plotly::plot_ly(thyroid, x = ~t3_reading, y = ~tsh_reading, z = ~thyrox_util_rate_t4u_reading, color = ~thyroid_class) 
 
 ```
-
-
 
 ```{r}
 p <- ggplot(data = thyroid, mapping = aes(x = t3_reading, y = tsh_reading, color = thyroid_class)) + geom_point() 
 plotly::ggplotly(p)
 ```
+
+We can see that most of the sick patients are grouped at the bottom left of the plot. In consequence, a first approach would be to use these 2 variables to create a predictor.
 
 ```{r}
 perc <- thyroid %>% select(tsh_reading, t3_reading, thyroid_class) %>%
@@ -191,12 +224,5 @@ thyroid %>% select(tsh_reading, t3_reading, thyroid_class) %>%
   ggplot(aes(x = t3_reading, y = tsh_reading)) + geom_point(aes(color = thyroid_class)) + 
   labs(caption = glue('Le pourcetage des patients malades contenues dans ce graphe est de {as.character(round(100*perc))}%')) 
 ```
-Grâce à ces deux taux, on a déjà une bonne idée de l'état du patient
 
-
-
-
-
-
-
-
+This plot confirms our intuition that sick patients tend to have a low tsh and a low t3 rate. Here we have 88% of the mass grouped in this zoom. Nonetheless we still miss some positive cases and if we have some false positive. Consequently, a first predictor could use these two continuous variables, but to have better results we could use more variables and use concrete models such as random forests on more variables.
