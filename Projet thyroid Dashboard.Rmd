@@ -11,11 +11,6 @@ output:
 runtime: shiny
 ---
 
-<style>
-.chart-shim {
-    overflow-y: scroll;
-}
-</style>
 
 ```{r setup, include=FALSE}
 library(ggplot2)
@@ -24,8 +19,9 @@ library(plyr)
 library(flexdashboard)
 library(readr)
 library(shiny)
+library(hash)
 
-data <- read.csv("thyroid.csv", header=TRUE, colClasses = 
+thyroid <- read.csv("thyroid.csv", header=TRUE, colClasses = 
                    c("ThryroidClass" = "character",
                      "patient_gender" = "character",
                      "presc_thyroxine" = "character",
@@ -49,10 +45,8 @@ data <- read.csv("thyroid.csv", header=TRUE, colClasses =
                      "FTI_measured" = "character",
                      "ref_src" = "character")
                  )
-```
 
-```{r, include=FALSE}
-skimr::skim(data)
+colnames(thyroid)[1] <- 'thyroid_class'
 ```
 
 
@@ -64,7 +58,7 @@ Row {.tabset}
 ### Informations data
 
 ```{r}
-skimr::skim(data)
+skimr::skim(thyroid)
 
 ```
 
@@ -73,26 +67,17 @@ skimr::skim(data)
 
 
 ```{r}
-selectInput("variable", 
-        label = "variable", 
-        choices = c("thyrox_util_rate_T4U_reading"=thyrox_util_rate_T4U_reading, "FTI_reading"=FTI_reading))
 
-y <- reactive(input$variable)
 ```
 
 
 ```{r}
-renderPlot(
-  ggplot(data) + geom_point(aes(x=patient_age, y=cat(y())))
-)
+
 ```
 
 ### Autre
 
 ```{r}
-renderPrint(
-  y()
-)
 
 ```
 
@@ -102,17 +87,43 @@ renderPrint(
 
 
 
-Onglet 2
+Comparing Groups
 =======================================================================
-Row
+
+
+Column {.sidebar}
 -----------------------------------------------------------------------
 
+```{r}
+selectInput('xcol', 'X Variable', names(thyroid))
+    
+selectInput('ycol', 'Y Variable', names(thyroid),
+                selected=names(thyroid)[[2]])
 
+selectInput('grp', 'Group', c('None', names(thyroid)))
 
-Onglet 3
-=======================================================================
-Row
+```
+
+Column
 -----------------------------------------------------------------------
+
+### General plot
+
+```{r}
+
+
+renderPlot({
+  p <- ggplot(thyroid, mapping = aes(x=UQ(as.name(input$xcol)), y=UQ(as.name(input$ycol)))) + geom_point() + labs(x=input$xcol,y=input$ycol)
+  
+  if (input$grp != 'None')
+    p <- p + aes_string(color=input$grp)
+  
+  print(p)
+  
+})
+
+
+```
 
 
 
