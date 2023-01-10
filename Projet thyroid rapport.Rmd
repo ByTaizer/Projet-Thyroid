@@ -80,7 +80,7 @@ write.csv(thyroid_uncomplete, 'thyroid_impute.csv')
 
 
 ```{r}
-skimr::skim(thyroid)
+head(thyroid)
 ```
 
 
@@ -150,7 +150,7 @@ p5 <- ggplot(data = thyroid, mapping = aes(x = fti_reading, y = thyroid_class)) 
 p1 + p2 + p3 + p4 + p5
 ```
 
-```{r}
+```{r warning = FALSE}
 p1 <- ggplot(data = thyroid, mapping = aes(x = tsh_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(-1,5)
                                                                           
 p2 <- ggplot(data = thyroid, mapping = aes(x = t4_reading, fill = thyroid_class)) + geom_density(data = filter(thyroid, thyroid_class == 'sick')) + geom_density(data = filter(thyroid, thyroid_class == 'negative')) + xlim(25,200)
@@ -169,7 +169,7 @@ p1 + p2 + p3 + p4 + p5
 pairs(thyroid[,c(19,21,23,25,27)], col=ifelse(thyroid$thyroid_class == 'sick', "red", "black"), lower.panel = NULL)
 ```
 
-```{r}
+```{r warning = FALSE}
 plotly::plot_ly(thyroid, x = ~t3_reading, y = ~tsh_reading, z = ~thyrox_util_rate_t4u_reading, color = ~thyroid_class)
 
 ```
@@ -178,9 +178,9 @@ plotly::plot_ly(thyroid, x = ~t3_reading, y = ~tsh_reading, z = ~thyrox_util_rat
 
 ```{r}
 p <- ggplot(data = thyroid, mapping = aes(x = t3_reading, y = tsh_reading, color = thyroid_class)) + geom_point() 
-p <- p + facet_grid()
 plotly::ggplotly(p)
 ```
+
 ```{r}
 perc <- thyroid %>% select(tsh_reading, t3_reading, thyroid_class) %>%
   filter((tsh_reading < 23 & t3_reading < 1.3) & thyroid_class == 'sick') %>% 
@@ -188,8 +188,8 @@ perc <- thyroid %>% select(tsh_reading, t3_reading, thyroid_class) %>%
   
 thyroid %>% select(tsh_reading, t3_reading, thyroid_class) %>%
   filter(tsh_reading < 23 & t3_reading < 1.3) %>% 
-  ggplot(aes(x = t3_reading, y = tsh_reading, color = thyroid_class)) + geom_point() + 
-  labs(caption = glue('Le pourcetage des patients malades contenues dans ce graphe est de {as.character(round(100*perc))}%'))
+  ggplot(aes(x = t3_reading, y = tsh_reading)) + geom_point(aes(color = thyroid_class)) + 
+  labs(caption = glue('Le pourcetage des patients malades contenues dans ce graphe est de {as.character(round(100*perc))}%')) 
 ```
 Grâce à ces deux taux, on a déjà une bonne idée de l'état du patient
 
