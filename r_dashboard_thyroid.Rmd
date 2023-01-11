@@ -1,0 +1,184 @@
+---
+title: "R dashboard Tyroid"
+author: "Gatien"
+date: "2023-01-08"
+runtime : shiny
+output:
+  flexdashboard::flex_dashboard:
+    orientation : rows
+---
+
+```{r global, include = FALSE}
+library(flexdashboard)
+library(shiny)
+library(skimr)
+library(dplyr)
+library(DT)
+library(tidyr)
+
+wd = 'D:/centrale_nantes/Mathapp/S2D_R/Projet_thyroid'
+setwd(wd)
+thyroid <- read.csv('thyroid.csv')
+```
+
+
+# PAGE 1
+
+## {.sidebar}
+
+```{r}
+numericInput("id_pat", label = "Client number :", value = 1)
+```
+
+## Row 1
+
+### ValueBox
+
+```{r}
+renderValueBox({
+  icon <- "fa-heart"
+  
+  valueBox(
+    value = if (thyroid[input$id_pat,'ThryroidClass'] == "sick") "Sick" else "Negative",
+    icon = icon,
+    caption = h3('Thyroid status') ,
+    color = if (thyroid[input$id_pat,'ThryroidClass'] == "sick") "DarkRed" else "Chartreuse"
+  )
+})
+```
+
+
+## Row 2
+
+### ValueBox
+
+```{r}
+renderValueBox({
+  icon <- if (thyroid[input$id_pat,'patient_gender'] == 0) "fa-male" else "fa-female"
+  
+  valueBox(
+    value = if (thyroid[input$id_pat,'patient_gender'] == 0) "male" else "female",
+    icon = icon,
+    caption = h3('Patient gender'),
+    color = if (thyroid[input$id_pat,'patient_gender'] == 0) "PowderBlue" else "Pink"
+  )
+})
+```
+
+### ValueBox
+
+```{r}
+renderValueBox({
+  icon <- "fa-hourglass-half"
+  
+  valueBox(
+    value = thyroid[input$id_pat,'patient_age'],
+    icon = icon,
+    caption = h3('Patient age'),
+    color = "white"
+  )
+})
+```
+
+## Row 3
+
+### ValueBox
+
+```{r}
+renderValueBox({
+  icon <- "fa-pills"
+  
+  valueBox(
+    value = if (thyroid[input$id_pat,'presc_thyroxine'] == 0) "No" else "Yes",
+    icon = icon,
+    caption = h3('Thyroxine prescribed'),
+    color = if (thyroid[input$id_pat,'presc_thyroxine'] == 0) "White"
+  )
+})
+```
+
+### ValueBox
+
+```{r}
+renderValueBox({
+  icon <- "fa-question"
+  
+  valueBox(
+    value = if (thyroid[input$id_pat,'queried_why_on_thyroxine'] == 0) "No" else "Yes",
+    icon = icon,
+    caption = h3('Query actionned'),
+    color = if (thyroid[input$id_pat,'queried_why_on_thyroxine'] == 0) "White"
+  )
+})
+```
+
+### ValueBox
+
+```{r}
+renderValueBox({
+  icon <- "fa-pills"
+  
+  valueBox(
+    value = if (thyroid[input$id_pat,'presc_anthyroid_meds'] == 0) "No" else "Yes",
+    icon = icon,
+    caption = h3('Anti-thyroid meds prescribed'),
+    color = if (thyroid[input$id_pat,'presc_anthyroid_meds'] == 0) "White"
+  )
+})
+```
+
+
+## Row 4
+
+```{r}
+
+ selectInput("reading", label = h3("Measures"), 
+    choices = list("TSH_reading", "T3_reading", "T4_reading", "thyrox_util_rate_T4U_reading", "FTI_reading"), 
+    selected = 1, width = '30%')
+
+```
+
+### ValueBox
+
+```{r}
+renderValueBox({
+  icon <- "fa-pills"
+  
+  row <- gsub("reading", "measured", input$reading)
+  
+  valueBox(
+    value = if (thyroid[input$id_pat,row] == 0) "No" else "Yes",
+    icon = icon,
+    caption = h3(gsub("_measured", "", row)),
+    color = "White"
+  )
+})
+```
+
+### {.gauge}
+```{r}
+renderGauge({
+  max1 <- thyroid[input$reading] %>% tidyr::drop_na() %>% max()
+  
+  gauge(thyroid[input$id_pat, input$reading], min = 0, max = max1,
+      sectors = gaugeSectors(danger = c(0, 0.33*max1), warning = c(0.33*max1, 0.66*max1), success = c(0.66*max1, max1) ))
+  })
+```
+
+## Row 6
+
+
+# PAGE 2
+
+# PAGE 3
+
+## Row
+
+```{r}
+renderTable( thyroid[1,] %>% select(-c(ThryroidClass, patient_age, patient_gender, TSH_measured, TSH_reading, T3_measured, T3_reading, T4_measured, T4_reading, thyrox_util_rate_T4U_measured, thyrox_util_rate_T4U_reading, FTI_measured, FTI_reading, ref_src)))
+```
+
+```{r}
+gsub('test','yes','testzeaokrtestzer')
+```
+
